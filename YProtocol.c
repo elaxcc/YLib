@@ -83,8 +83,8 @@ uint8_t timer_state_ = 0;
 YBOOL use_timer_ = YFALSE;
 unsigned ticks_ = 0;
 unsigned current_tick_ = 0;
-void (*start_timer_func_ptr_)(void);
-void (*stop_timer_func_ptr_)(void);
+void (*start_timer_func_ptr_)(void) = 0;
+void (*stop_timer_func_ptr_)(void) = 0;
 
 void YProtocolStartTimer(void)
 {
@@ -108,12 +108,15 @@ void YProtocolResetTimer(void)
 
 void YProtocolTimerInterrupt(void)
 {
-	current_tick_++;
-	
-	if (current_tick_ >= ticks_)
+	if (use_timer_ == YTRUE)
 	{
-		YProtocolStopTimer();
-		YProtocolReinit();
+		current_tick_++;
+		
+		if (current_tick_ >= ticks_)
+		{
+			YProtocolStopTimer();
+			YProtocolReinit();
+		}
 	}
 }
 
@@ -128,8 +131,11 @@ void YProtocolEnableTimer(unsigned ticks, void (*start_timer_func_ptr)(void), vo
 
 void YProtocolDisableTimer(void)
 {
-	stop_timer_func_ptr_();
-	use_timer_ = YFALSE;
+	if (use_timer_ == YTRUE)
+	{
+		stop_timer_func_ptr_();
+		use_timer_ = YFALSE;
+	}
 }
 
 void YProtocolReinit(void)
@@ -223,7 +229,10 @@ int32_t YProtocolParse(uint8_t byte)
 			if (parse_bc_ == 0x00)
 			{
 				YProtocolReinit();
-				YProtocolStopTimer();
+				if (use_timer_ == YTRUE)
+				{
+					YProtocolStopTimer();
+				}
 				return Y_PARSE_ERROR_BC;
 			}				
 			
@@ -325,7 +334,10 @@ int32_t YProtocolParse(uint8_t byte)
 								// Packet was parsed
 								err = packet_process_func_ptr_();
 								YProtocolReinit();
-								YProtocolStopTimer();
+								if (use_timer_ == YTRUE)
+								{
+									YProtocolStopTimer();
+								}
 								return err;
 							}
 							else 
@@ -333,7 +345,10 @@ int32_t YProtocolParse(uint8_t byte)
 								// Wrong CRC6, reinitialization of the Parse variables
 							
 								YProtocolReinit();
-								YProtocolStopTimer();
+								if (use_timer_ == YTRUE)
+								{
+									YProtocolStopTimer();
+								}
 								return Y_PARSE_ERROR_CRC;
 							}
 						}
